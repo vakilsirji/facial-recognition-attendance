@@ -2,6 +2,5 @@ fastapi
 uvicorn
 python-multipart
 sqlalchemy
-opencv-python
-deepface
-tf-keras
+opencv-python-headless
+deepface[tensorflow]
