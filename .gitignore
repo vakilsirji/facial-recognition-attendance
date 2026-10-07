@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+attendance.db
+employee_photos/
+temp_scans/
+.env

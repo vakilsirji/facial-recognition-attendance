@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Admin Dashboard</title>
+    <meta name="theme-color" content="#0f172a">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #3b82f6; --secondary: #10b981; --bg: #0f172a; --surface: #1e293b; --surface-hover: #334155; --text: #f8fafc; --text-muted: #94a3b8; --border: rgba(255,255,255,0.08); }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Outfit', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg); color: var(--text); padding-bottom: 40px; }
+        
+        .navbar { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding: 1.25rem 1.5rem; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .navbar h1 { font-size: 1.4rem; font-weight: 700; background: linear-gradient(135deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .btn { background: rgba(255,255,255,0.1); color: var(--text); border: 1px solid var(--border); padding: 8px 16px; border-radius: 999px; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+        .btn:active { background: rgba(255,255,255,0.2); transform: scale(0.95); }
+        
+        .container { max-width: 1200px; margin: 1.5rem auto; padding: 0 1rem; display: grid; gap: 1.5rem; }
+        @media (min-width: 768px) { .container { grid-template-columns: 1fr 2fr; gap: 2rem; padding: 0 2rem; margin: 2.5rem auto; } }
+        
+        .card { background: var(--surface); border-radius: 20px; padding: 1.5rem; border: 1px solid var(--border); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); overflow: hidden; }
+        .card h2 { font-size: 1.2rem; font-weight: 600; margin-bottom: 1.25rem; color: #cbd5e1; display: flex; align-items: center; gap: 8px; }
+        .card h2::before { content: ''; display: block; width: 4px; height: 18px; background: var(--primary); border-radius: 4px; }
+        
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -1.5rem; padding: 0 1.5rem; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 400px; }
+        th, td { padding: 1rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
+        th { color: var(--text-muted); font-weight: 500; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        tr { transition: background 0.2s; }
+        tbody tr:hover { background: rgba(255,255,255,0.02); }
+        td:first-child, th:first-child { padding-left: 0; }
+        td:last-child, th:last-child { padding-right: 0; }
+        
+        .emp-photo { width: 44px; height: 44px; border-radius: 12px; object-fit: cover; background: #0f172a; border: 1px solid var(--border); }
+        .emp-name { font-weight: 600; color: #f1f5f9; }
+        .emp-id-text { color: var(--text-muted); font-size: 0.85rem; }
+        
+        .badge { background: rgba(16, 185, 129, 0.15); color: #34d399; padding: 6px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; display: inline-block; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .time-text { color: #cbd5e1; font-weight: 500; }
+        
+        /* Empty states */
+        .empty-state { text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.95rem; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>FaceAuth</h1>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn" onclick="window.location.href='/add_employee'">+ Add Employee</button>
+            <button class="btn" onclick="fetchData()">↻ Refresh</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Employees Section -->
+        <div class="card">
+            <h2>Team Members</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead><tr><th>User</th><th>ID</th></tr></thead>
+                    <tbody id="employeesTable">
+                        <tr><td colspan="2" class="empty-state">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Attendance Logs Section -->
+        <div class="card">
+            <h2>Recent Check-ins</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead><tr><th>Employee</th><th>Time</th><th>Status</th></tr></thead>
+                    <tbody id="attendanceTable">
+                        <tr><td colspan="3" class="empty-state">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Store employee map for quick lookup
+        let empMap = {};
+
+        async function fetchData() {
+            try {
+                // Fetch Employees
+                const empRes = await fetch('/employees/');
+                const employees = await empRes.json();
+                
+                const empTbody = document.getElementById('employeesTable');
+                empTbody.innerHTML = '';
+                
+                if(employees.length === 0) {
+                    empTbody.innerHTML = '<tr><td colspan="2" class="empty-state">No employees found</td></tr>';
+                } else {
+                    employees.forEach(emp => {
+                        empMap[emp.id] = emp; // Save to map
+                        const imgUrl = '/' + emp.photo_path.replace(/\\/g, '/');
+                        
+                        empTbody.innerHTML += `
+                            <tr>
+                                <td style="display:flex; align-items:center; gap:12px;">
+                                    <img src="${imgUrl}" class="emp-photo" alt="Photo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'44\\' height=\\'44\\'><rect width=\\'44\\' height=\\'44\\' fill=\\'%23334155\\'/></svg>'">
+                                    <div>
+                                        <div class="emp-name">${emp.name}</div>
+                                        <div class="emp-id-text">${emp.emp_id}</div>
+                                    </div>
+                                </td>
+                                <td style="color:var(--text-muted)">#${emp.id}</td>
+                            </tr>
+                        `;
+                    });
+                }
+
+                // Fetch Attendance
+                const attRes = await fetch('/attendance/');
+                const attendance = await attRes.json();
+                
+                const attTbody = document.getElementById('attendanceTable');
+                attTbody.innerHTML = '';
+                
+                if(attendance.length === 0) {
+                    attTbody.innerHTML = '<tr><td colspan="3" class="empty-state">No attendance logs found</td></tr>';
+                } else {
+                    attendance.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    
+                    attendance.forEach(log => {
+                        // Format date beautifully
+                        const dateObj = new Date(log.timestamp);
+                        const today = new Date();
+                        let dateStr = "";
+                        
+                        if(dateObj.toDateString() === today.toDateString()) {
+                            dateStr = "Today, " + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        } else {
+                            dateStr = dateObj.toLocaleDateString([], {month:'short', day:'numeric'}) + ", " + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        }
+                        
+                        // Get employee name if available
+                        const empName = empMap[log.employee_id] ? empMap[log.employee_id].name : `Emp #${log.employee_id}`;
+
+                        attTbody.innerHTML += `
+                            <tr>
+                                <td class="emp-name">${empName}</td>
+                                <td class="time-text">${dateStr}</td>
+                                <td><span class="badge">Success</span></td>
+                            </tr>
+                        `;
+                    });
+                }
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                document.getElementById('employeesTable').innerHTML = '<tr><td colspan="2" class="empty-state">Failed to load</td></tr>';
+                document.getElementById('attendanceTable').innerHTML = '<tr><td colspan="3" class="empty-state">Failed to load</td></tr>';
+            }
+        }
+
+        window.onload = fetchData;
+    </script>
+</body>
+</html>
