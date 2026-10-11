@@ -3,6 +3,11 @@ from sqlalchemy.orm import relationship
 from database import Base
 import datetime
 
+IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+
+def get_ist_time():
+    return datetime.datetime.now(IST)
+
 class Employee(Base):
     __tablename__ = "employees"
 
@@ -19,7 +24,7 @@ class Attendance(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     employee_id = Column(Integer, ForeignKey("employees.id"))
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    timestamp = Column(DateTime, default=get_ist_time)
     status = Column(String) # e.g. "Present"
     
     employee = relationship("Employee", back_populates="attendance_logs")

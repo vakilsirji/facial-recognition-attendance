@@ -1,6 +1,8 @@
-from pydantic import BaseModel
-from datetime import datetime
+from pydantic import BaseModel, field_serializer
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional
+
+IST = timezone(timedelta(hours=5, minutes=30))
 
 class EmployeeBase(BaseModel):
     name: str
@@ -26,6 +28,12 @@ class Attendance(AttendanceBase):
     id: int
     employee_id: int
     timestamp: datetime
+
+    @field_serializer('timestamp')
+    def serialize_timestamp(self, dt: datetime, _info):
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=IST).isoformat()
+        return dt.astimezone(IST).isoformat()
 
     class Config:
         from_attributes = True

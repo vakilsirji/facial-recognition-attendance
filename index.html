@@ -87,7 +87,7 @@
             submitBtn.disabled = true;
 
             const formData = new FormData();
-            formData.append('file', cameraInput.files[0]);
+            formData.append('file', cameraInput.files[0], "photo.jpg");
 
             try {
                 const response = await fetch('/mark_attendance/', {
@@ -115,6 +115,7 @@
                 submitBtn.disabled = false;
             }
         });
+
     </script>
 </body>
 </html>

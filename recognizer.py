@@ -9,13 +9,14 @@ def process_group_attendance(group_img_path, db_path="employee_photos"):
     Returns a list of matched employee photo filenames.
     """
     try:
-        # DeepFace.find detects all faces in the image and matches them against the db
         results = DeepFace.find(
             img_path=group_img_path,
             db_path=db_path,
-            model_name="Facenet",          # Facenet is much faster than VGG-Face
-            detector_backend="mtcnn",      # MTCNN is much faster on CPUs than retinaface
-            enforce_detection=False
+            model_name="Facenet",          
+            detector_backend="mtcnn",     
+            distance_metric="cosine",
+            enforce_detection=False,
+            silent=True
         )
         
         matched_filenames = []

@@ -7,6 +7,8 @@ import os
 import shutil
 import uuid
 
+
+
 import models, schemas
 from database import SessionLocal, engine, get_db
 from recognizer import process_group_attendance
@@ -14,6 +16,9 @@ from recognizer import process_group_attendance
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Facial Recognition Attendance System")
+
+
+
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
@@ -134,6 +139,44 @@ async def mark_attendance(
         "count": len(present_employees),
         "present_employees": present_employees
     }
+
+@app.delete("/employees/{employee_id}")
+def delete_employee(employee_id: int, db: Session = Depends(get_db)):
+    employee = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    if os.path.exists(employee.photo_path):
+        try:
+            os.remove(employee.photo_path)
+        except:
+            pass
+            
+    db.query(models.Attendance).filter(models.Attendance.employee_id == employee_id).delete()
+    db.delete(employee)
+    db.commit()
+    
+    # Delete DeepFace cache files so the old employee is removed from recognition
+    for f in os.listdir(UPLOAD_DIR):
+        if f.endswith('.pkl'):
+            try:
+                os.remove(os.path.join(UPLOAD_DIR, f))
+            except Exception:
+                pass
+                
+    return {"message": "Employee deleted"}
+
+@app.put("/employees/{employee_id}", response_model=schemas.Employee)
+def update_employee(employee_id: int, employee_update: schemas.EmployeeBase, db: Session = Depends(get_db)):
+    employee = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    employee.name = employee_update.name
+    employee.emp_id = employee_update.emp_id
+    db.commit()
+    db.refresh(employee)
+    return employee
 
 @app.get("/employees/", response_model=List[schemas.Employee])
 def read_employees(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
