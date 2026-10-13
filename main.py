@@ -6,6 +6,7 @@ from typing import List
 import os
 import shutil
 import uuid
+import gc
 
 
 
@@ -100,16 +101,17 @@ async def mark_attendance(
     with open(temp_file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
-    # OPTIMIZATION: Resize the huge mobile phone photo to make CPU processing much faster
+    # OPTIMIZATION: Downscale mobile photo to 640px max to cut memory usage
     import cv2
     img = cv2.imread(temp_file_path)
     if img is not None:
-        # Resize to max width of 800px while maintaining aspect ratio
         height, width = img.shape[:2]
-        if width > 800:
-            new_height = int(height * (800 / width))
-            img = cv2.resize(img, (800, new_height))
-            cv2.imwrite(temp_file_path, img)
+        if width > 640:
+            new_height = int(height * (640 / width))
+            img = cv2.resize(img, (640, new_height), interpolation=cv2.INTER_AREA)
+            cv2.imwrite(temp_file_path, img, [cv2.IMWRITE_JPEG_QUALITY, 80])
+        del img   # free before heavy DeepFace call
+        gc.collect()
             
     # Get all matched employee filenames from the group photo
     matched_filenames = process_group_attendance(temp_file_path, UPLOAD_DIR)
