@@ -127,8 +127,16 @@ async def mark_attendance(
     present_employees = []
     
     for filename in matched_filenames:
-        # Find employee by photo filename
-        db_employee = db.query(models.Employee).filter(models.Employee.photo_path.endswith(filename)).first()
+        # Find employee by photo filename - extract base name from stored path
+        all_employees = db.query(models.Employee).all()
+        db_employee = None
+        for emp in all_employees:
+            # Extract filename from the stored photo_path (handles both / and \ separators)
+            stored_filename = os.path.basename(emp.photo_path.replace('\\', '/'))
+            if stored_filename == filename:
+                db_employee = emp
+                break
+        
         if db_employee:
             attendance = models.Attendance(employee_id=db_employee.id, status="Present")
             db.add(attendance)
